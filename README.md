@@ -26,6 +26,20 @@ python3 zipcache_generation_demo.py
 
 ```
 
+## Probe-token ratio ablation
+
+The original LLaMA path uses a fixed probe budget with approximately half of the probes from the recent prompt tail and half sampled uniformly at random (with replacement). You can vary the allocation without changing the total probe budget:
+
+```bash
+python zipcache_generation_demo.py --probe-ratio 0.10 --recent-probe-share 0.00 --seed 20261029
+python zipcache_generation_demo.py --probe-ratio 0.10 --recent-probe-share 0.25 --seed 20261029
+python zipcache_generation_demo.py --probe-ratio 0.10 --recent-probe-share 0.50 --seed 20261029
+python zipcache_generation_demo.py --probe-ratio 0.10 --recent-probe-share 0.75 --seed 20261029
+python zipcache_generation_demo.py --probe-ratio 0.10 --recent-probe-share 1.00 --seed 20261029
+```
+
+`--recent-probe-share 0.00` uses only random probes; `1.00` uses only recent probes. Keep the model, prompts, decoding parameters, and random seeds fixed when comparing runs. The demo still requires a local LLaMA checkpoint and the CUDA setup used by the original script. The CPU unit tests for probe selection can be run with `python -m unittest discover -s tests -v`.
+
 ## BibTeX
 If you find this work useful for your research, please consider citing:
 ```

@@ -57,6 +57,7 @@ from transformers.utils.import_utils import is_torch_fx_available
 from transformers.models.llama.configuration_llama import LlamaConfig
 
 from .CompressUtils import CompressUnion, MixedPrecisionCompressUnion
+from .probe_selection import select_probe_ids
 
 if is_flash_attn_2_available():
     from flash_attn import flash_attn_func, flash_attn_varlen_func
@@ -772,11 +773,12 @@ class MixedLlamaAttention(nn.Module):
         key_states = repeat_kv(key_states, self.num_key_value_groups)
         value_states = repeat_kv(value_states, self.num_key_value_groups)
 
-        if q_len > 1: ## prefill phase, identify salient tokens
-            # probe_ids = torch.randint(0, q_len, (int(q_len*0.1),)) ## use rand tokens
-            # probe_ids = torch.arange(q_len-int(q_len*0.1), q_len) ## use recent tokens
-            probe_ids = torch.cat([torch.arange(int(q_len-0.05*q_len), q_len), \
-                torch.randint(0, int(q_len-0.05*q_len), (int(0.05*q_len), ))]) ## use rand + recent tokens
+        if q_len > 1:  # prefill phase: estimate salient tokens from probe queries
+            probe_ids = select_probe_ids(
+                q_len,
+                probe_ratio=self.compress_config.get("probe_ratio", 0.10),
+                recent_share=self.compress_config.get("recent_probe_share", 0.50),
+            )
             
             probe_query_states = query_states[:,:,probe_ids,:]
             attn_weights = torch.matmul(probe_query_states, key_states.transpose(2, 3)) / math.sqrt(self.head_dim)
